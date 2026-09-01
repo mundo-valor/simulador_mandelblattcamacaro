@@ -32,7 +32,36 @@
     font-family: var(--sans);
   }
 
-  .wrap { max-width: 1400px; margin: 0 auto; padding: 30px 20px; }
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+
+  /* TOP BAR - ACCIONES */
+  .top-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    margin-bottom: 20px;
+  }
+
+  .action-btn {
+    padding: 8px 16px;
+    font-family: var(--sans);
+    font-size: 0.85rem;
+    font-weight: bold;
+    border-radius: 4px;
+    text-decoration: none;
+    cursor: pointer;
+    border: 1px solid var(--border-color);
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s;
+  }
+
+  .print-btn { background: var(--white); color: var(--dark-blue); }
+  .print-btn:hover { background: #e0e0e0; }
+  
+  .donate-btn { background: #0070ba; color: #fff; border-color: #005ea6; }
+  .donate-btn:hover { background: #005ea6; }
 
   /* HEADER CON LOGOS */
   header { 
@@ -48,6 +77,8 @@
     box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
     transition: transform 0.2s;
     border-radius: 2px;
+    background-color: #fff; /* Fondo blanco en caso de que la imagen tarde en cargar */
+    min-width: 100px; /* Evita que el contenedor colapse si la imagen no carga */
   }
   .header-logos-left a img:hover { transform: scale(1.05); }
 
@@ -131,14 +162,31 @@
 
   .chart-box { background: #fff; border: 1px solid var(--border-color); padding: 15px; margin-bottom: 20px; }
   #resultados-ui { display: none; }
+
+  /* ESTILOS PARA IMPRESIÓN (OCULTA PARÁMETROS) */
+  @media print {
+    body { background: #fff; }
+    .top-actions { display: none; }
+    .layout { display: block; }
+    .layout > .panel:first-child { display: none; } /* Oculta la columna izquierda */
+    .layout > .panel:last-child { border: none; box-shadow: none; }
+    .chart-box { break-inside: avoid; } /* Evita que los gráficos se corten entre páginas */
+  }
 </style>
 </head>
 <body>
 
 <div class="wrap">
+  
+  <!-- BARRA DE ACCIONES SUPERIOR -->
+  <div class="top-actions">
+    <button onclick="window.print()" class="action-btn print-btn">🖨️ Imprimir Reporte</button>
+    <a href="https://paypal.me/spilimcurso" target="_blank" class="action-btn donate-btn">☕ Aporte / Donación</a>
+  </div>
+
   <header>
     <div class="header-logos-left">
-      <a href="Capítulo7.pdf" target="_blank" title="Leer Capítulo 7">
+      <a href="Capítulo7_2.pdf" target="_blank" title="Leer Capítulo 7">
         <img src="Contributivo.png" alt="Portada Método Contributivo">
       </a>
     </div>
@@ -278,6 +326,7 @@
             <div><label>Base / Prob.</label><input type="number" id="base_CH" value="0.03" step="0.01"></div> 
             <div><label>Máximo</label><input type="number" id="max_CH" value="0.10" step="0.01"></div>
           </div>
+          <div class="note">δ (depreciación) se calcula con la fórmula Ross-Heidecke: δ = ea/vu + CH·(1 - ea/vu).</div>
         </fieldset>
 
         <fieldset>
@@ -320,7 +369,7 @@
           </div>
         </fieldset>
 
-        <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN</button>
+        <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN DE MONTE CARLO</button>
 
       </div>
     </div>
@@ -595,7 +644,7 @@
     // --- GRÁFICOS ---
     function crearHistograma(data, min, max, pMin, pMax, media) {
         if(histogramaChart) histogramaChart.destroy();
-        const bins = 45;
+        const bins = 50;
         const width = (max - min) / bins;
         let freq = new Array(bins).fill(0);
         let labels = [];
