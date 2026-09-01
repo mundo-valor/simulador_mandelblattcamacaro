@@ -34,55 +34,75 @@
 
   .wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
 
-  /* HEADER ESTRUCTURADO TIPO GRID */
-  header { 
-    display: grid;
-    grid-template-columns: 120px 1fr auto;
-    gap: 30px;
-    margin-bottom: 30px; 
-    align-items: center;
-  }
-  
-  .header-left img { height: 90px; object-fit: contain; }
-
-  .header-center { text-align: center; display: flex; flex-direction: column; align-items: center; }
-  .header-center h1 { font-family: var(--serif); color: var(--dark-blue); font-size: 2.1rem; margin: 0 0 10px 0; font-weight: normal; }
-  .header-center p { font-family: var(--serif); max-width: 850px; margin: 0 auto; line-height: 1.6; color: #555; }
-  
-  .center-bottom { display: grid; grid-template-columns: 1fr auto 1fr; width: 100%; align-items: end; margin-top: 15px; }
-  .tag-container { text-align: right; }
-  .cap-tag {
-    display: inline-block; font-family: var(--mono); font-size: 0.75rem;
-    border: 1px solid var(--border-color); padding: 4px 8px;
-    color: #666; background: transparent;
+  /* TOP BAR - ACCIÓN IMPRIMIR */
+  .top-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-bottom: 10px;
   }
 
-  .header-right { display: flex; gap: 15px; align-items: center; }
-  .header-right img { height: 110px; }
-  .book-cover { box-shadow: 2px 2px 6px rgba(0,0,0,0.2); transition: transform 0.2s; border-radius: 2px; background: #fff;}
-  .book-cover:hover { transform: scale(1.05); }
-
-  /* BOTONES DE ACCIÓN */
   .action-btn {
     padding: 8px 16px; font-family: var(--sans); font-size: 0.85rem; font-weight: bold;
     border-radius: 4px; text-decoration: none; cursor: pointer; border: 1px solid var(--border-color);
     display: inline-flex; align-items: center; gap: 8px; transition: all 0.2s;
   }
-  .print-btn { background: var(--white); color: var(--dark-blue); margin-bottom: 5px; }
+  .print-btn { background: var(--white); color: var(--dark-blue); }
   .print-btn:hover { background: #e0e0e0; }
+
+  /* HEADER ESTRUCTURADO TIPO GRID (4 COLUMNAS) */
+  header { 
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    gap: 30px;
+    margin-bottom: 30px; 
+    align-items: center;
+  }
   
-  .donate-btn { background: #0070ba; color: #fff; border-color: #005ea6; margin: 0 auto;}
+  .header-left img { height: 110px; object-fit: contain; }
+
+  .header-center { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .header-center h1 { font-family: var(--serif); color: var(--dark-blue); font-size: 2.1rem; margin: 0; font-weight: normal; }
+  .header-center p { font-family: var(--serif); max-width: 850px; margin: 0 auto; line-height: 1.5; color: #555; }
+  .donate-btn { background: #0070ba; color: #fff; border-color: #005ea6; padding: 10px 20px; font-size: 0.95rem; }
   .donate-btn:hover { background: #005ea6; }
+
+  .header-book { text-align: center; cursor: pointer; }
+  .book-cover { height: 130px; box-shadow: 2px 2px 6px rgba(0,0,0,0.2); transition: transform 0.2s; border-radius: 2px; background: #fff;}
+  .header-book:hover .book-cover { transform: scale(1.05); }
+  .book-tag {
+    margin-top: 8px; font-family: var(--mono); font-size: 0.7rem;
+    border: 1px solid var(--border-color); padding: 4px 6px;
+    color: #555; background: var(--white);
+  }
+
+  .header-right img { height: 110px; }
+
+  @media (max-width: 1024px) { 
+    header { grid-template-columns: 1fr; text-align: center; gap: 20px; }
+    .header-left img, .header-right img { margin: 0 auto; height: 90px;}
+    .layout { grid-template-columns: 1fr; } 
+  }
+
+  /* MODAL VISOR PDF */
+  .modal-overlay {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.85); z-index: 9999; justify-content: center; align-items: center;
+    backdrop-filter: blur(4px);
+  }
+  .modal-content {
+    background: #fff; width: 85%; height: 90%; position: relative; border-radius: 4px; overflow: hidden;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+  }
+  .close-btn {
+    position: absolute; top: 10px; right: 15px; font-size: 1.5rem; font-weight: bold;
+    color: #fff; background: var(--rust); border: none; cursor: pointer; border-radius: 50%;
+    width: 35px; height: 35px; line-height: 1; text-align: center; z-index: 10000;
+  }
+  .close-btn:hover { background: #8E4A2A; }
+  iframe.pdf-viewer { width: 100%; height: 100%; border: none; background: #ececec; }
 
   /* LAYOUT Y PANELES */
   .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
-  @media (max-width: 1024px) { 
-    .layout { grid-template-columns: 1fr; } 
-    header { grid-template-columns: 1fr; text-align: center; gap: 15px; }
-    .header-left img, .header-right { justify-content: center; margin: 0 auto; }
-    .center-bottom { grid-template-columns: 1fr; gap: 15px; text-align: center; }
-    .tag-container { text-align: center; }
-  }
 
   .panel { background: var(--white); border: 1px solid var(--border-color); box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
   .panel-header {
@@ -123,7 +143,6 @@
     font-size: 0.9rem; background: #fff; margin-bottom: 20px; line-height: 1.5;
   }
   
-  /* TABS CON BOTÓN IMPRIMIR */
   .tabs-container {
     display: flex; justify-content: space-between; align-items: flex-end;
     border-bottom: 1px solid var(--dark-blue); margin-bottom: 20px;
@@ -152,7 +171,7 @@
   /* ESTILOS PARA IMPRESIÓN */
   @media print {
     body { background: #fff; }
-    .donate-btn, .print-btn { display: none !important; }
+    .top-actions, .donate-btn, .header-book { display: none !important; }
     .layout { display: block; }
     .layout > .panel:first-child { display: none; } 
     .layout > .panel:last-child { border: none; box-shadow: none; }
@@ -161,6 +180,15 @@
 </style>
 </head>
 <body>
+
+<!-- MODAL VISOR PDF -->
+<div id="pdfModal" class="modal-overlay">
+  <div class="modal-content">
+    <button class="close-btn" onclick="cerrarPDF()">×</button>
+    <!-- Se agrega #toolbar=0&navpanes=0 para ocultar herramientas de descarga/impresión en visores nativos -->
+    <iframe id="pdfFrame" class="pdf-viewer" src=""></iframe>
+  </div>
+</div>
 
 <div class="wrap">
   
@@ -172,20 +200,16 @@
     <div class="header-center">
       <h1>Modelo Mandelblatt-Camacaro/Simulador Monte Carlo</h1>
       <p>Enfoque probabilístico del Método Contributivo. Transforma el cálculo determinístico en una distribución de frecuencias, con intervalos de confianza y análisis de sensibilidad ceteris paribus.</p>
-      
-      <div class="center-bottom">
-        <div class="spacer"></div>
-        <a href="https://paypal.me/spilimcurso" target="_blank" class="action-btn donate-btn">☕ Aporte / Donación</a>
-        <div class="tag-container">
-          <div class="cap-tag">Clic para leer el CAP. 7 del libro</div>
-        </div>
-      </div>
+      <a href="https://paypal.me/spilimcurso" target="_blank" class="action-btn donate-btn">☕ Aporte / Donación</a>
+    </div>
+
+    <!-- LIBRO CLICKABLE -->
+    <div class="header-book" onclick="abrirPDF()">
+      <img src="Contributivo.png" alt="Portada Método Contributivo" class="book-cover">
+      <div class="book-tag">CAP. 7 - SIMULACIÓN DE ESCENARIOS</div>
     </div>
 
     <div class="header-right">
-      <a href="Capítulo7_2.pdf" target="_blank" title="Leer Capítulo 7">
-        <img src="Contributivo.png" alt="Portada Método Contributivo" class="book-cover">
-      </a>
       <img src="Valuador Inteligente.png" alt="Valuador Inteligente">
     </div>
   </header>
@@ -356,7 +380,7 @@
           </div>
         </fieldset>
 
-        <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN DE MONTE CARLO</button>
+        <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN</button>
 
       </div>
     </div>
@@ -430,15 +454,25 @@
 </div>
 
 <script>
+    // --- LÓGICA VISOR PDF ---
+    function abrirPDF() {
+      // El parámetro #toolbar=0 oculta las herramientas de descarga en navegadores compatibles
+      document.getElementById('pdfFrame').src = 'Capítulo7_2.pdf#toolbar=0&navpanes=0&scrollbar=0';
+      document.getElementById('pdfModal').style.display = 'flex';
+    }
+
+    function cerrarPDF() {
+      document.getElementById('pdfModal').style.display = 'none';
+      document.getElementById('pdfFrame').src = ''; // Limpia el iframe para detener la carga
+    }
+
+    // --- LÓGICA DEL SIMULADOR ---
     let histogramaChart = null;
     let tornadoChart = null;
 
     const fNum = (num, decimals = 2) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
 
-    // --- GENERADORES ESTOCÁSTICOS ---
-    function randUniform(min, max) {
-        return Math.random() * (max - min) + min;
-    }
+    function randUniform(min, max) { return Math.random() * (max - min) + min; }
 
     function randNormal(mean, std) {
         let u = 1 - Math.random(); 
@@ -454,14 +488,11 @@
         return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
     }
 
-    // Algoritmo de Johnk para Distribución Beta
     function randBeta(alpha, beta) {
       let u, v, w, x, y;
       do {
-        u = Math.random();
-        v = Math.random();
-        x = Math.pow(u, 1 / alpha);
-        y = Math.pow(v, 1 / beta);
+        u = Math.random(); v = Math.random();
+        x = Math.pow(u, 1 / alpha); y = Math.pow(v, 1 / beta);
         w = x + y;
       } while (w > 1);
       return x / w;
@@ -496,7 +527,6 @@
         return p.base;
     }
 
-    // --- EVALUACIÓN MODELO CENTRAL ---
     function calcularVi(Cuc, Fc, Ct, ea, vu, CH, Ac, Vme, Fr) {
         let Vcn = Ac * Cuc;
         let def = ea / vu;
@@ -518,9 +548,8 @@
             let p_Cuc = getV('Cuc'), p_Fc = getV('Fc'), p_Ct = getV('Ct');
             let p_ea = getV('ea'), p_vu = getV('vu'), p_CH = getV('CH'), p_Vme = getV('Vme');
 
-            // Validación matemática crucial (Ct * Fc < 1)
             if (p_Ct.base * p_Fc.base >= 1) {
-                alert("Error: El producto de los valores base de Ct y Fc debe ser estrictamente menor a 1 para evitar divisiones por cero o resultados negativos.");
+                alert("Error: El producto de los valores base de Ct y Fc debe ser estrictamente menor a 1.");
                 return;
             }
 
@@ -535,14 +564,9 @@
                 let validSample = false;
                 let attempts = 0;
                 
-                // Muestreo con restricción dinámica
                 do {
-                    rCuc = getValorVar(p_Cuc);
-                    rFc  = getValorVar(p_Fc);
-                    rCt  = getValorVar(p_Ct);
-                    rea  = getValorVar(p_ea);
-                    rvu  = getValorVar(p_vu);
-                    rCH  = getValorVar(p_CH);
+                    rCuc = getValorVar(p_Cuc); rFc  = getValorVar(p_Fc); rCt  = getValorVar(p_Ct);
+                    rea  = getValorVar(p_ea); rvu  = getValorVar(p_vu); rCH  = getValorVar(p_CH);
                     rVme = getValorVar(p_Vme);
                     
                     attempts++;
@@ -558,7 +582,6 @@
                 sum += val;
             }
 
-            // --- Estadísticas ---
             resultados.sort();
             let media = sum / iteraciones;
             let mediana = resultados[Math.floor(iteraciones / 2)];
@@ -583,12 +606,10 @@
             let sesgo = (iteraciones / ((iteraciones - 1) * (iteraciones - 2))) * sumCu3;
             let curtosis = (sumCu4 / iteraciones) - 3;
 
-            // Intervalo Confianza
             let alpha = (1 - confNivel) / 2;
             let pMin = resultados[Math.floor(iteraciones * alpha)];
             let pMax = resultados[Math.floor(iteraciones * (1 - alpha))];
 
-            // UI Update
             document.getElementById('empty-state').style.display = 'none';
             document.getElementById('resultados-ui').style.display = 'block';
             
@@ -631,7 +652,6 @@
         }
     }
 
-    // --- GRÁFICOS ---
     function crearHistograma(data, min, max, pMin, pMax, media) {
         if(histogramaChart) histogramaChart.destroy();
         const bins = 50;
@@ -650,15 +670,13 @@
             let binCenter = min + (i * width) + (width / 2);
             labels.push(fNum(min + (i*width), 0));
             
-            // Highlight para intervalo de confianza
             if (binCenter >= pMin && binCenter <= pMax) {
-                bgColors.push('#1C456B'); // Intervalo principal
+                bgColors.push('#1C456B'); 
             } else {
-                bgColors.push('#B9CEDB'); // Colas
+                bgColors.push('#B9CEDB'); 
             }
         }
 
-        // Plugin para línea punteada vertical (Media)
         const pluginLineaMedia = {
             id: 'pluginLineaMedia',
             afterDraw: (chart) => {
