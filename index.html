@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Simulador Monte Carlo — Modelo Mandelblatt-Camacaro</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  :root {
+    --bg-color: #EFECE1;
+    --grid-color: #DCD8C9;
+    --dark-blue: #1C456B;
+    --light-blue: #B9CEDB;
+    --rust: #B8623B;
+    --text-main: #333333;
+    --border-color: #C4C0B1;
+    --white: #F9F8F4;
+    --mono: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+    --serif: 'Georgia', 'Times New Roman', serif;
+    --sans: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    color: var(--text-main);
+    background-color: var(--bg-color);
+    background-image: 
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+    background-size: 20px 20px;
+    font-family: var(--sans);
+  }
+
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 30px 20px; }
+
+  /* HEADER CON LOGOS */
+  header { 
+    margin-bottom: 25px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: flex-start;
+    gap: 20px;
+  }
+  
+  .header-logos-left a img {
+    height: 140px;
+    box-shadow: 3px 3px 8px rgba(0,0,0,0.2);
+    transition: transform 0.2s;
+    border-radius: 2px;
+  }
+  .header-logos-left a img:hover { transform: scale(1.05); }
+
+  .header-title { flex: 1; text-align: center; position: relative;}
+  .header-title h1 { font-family: var(--serif); color: var(--dark-blue); font-size: 2.1rem; margin: 0 0 10px 0; font-weight: normal; }
+  .header-title p { font-family: var(--serif); max-width: 800px; margin: 0 auto; line-height: 1.6; color: #555; }
+  
+  .cap-tag {
+    display: inline-block;
+    margin-top: 15px;
+    font-family: var(--mono); font-size: 0.75rem;
+    border: 1px solid var(--border-color); padding: 4px 8px;
+    color: #666; background: transparent;
+  }
+
+  .header-logos-right {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+  }
+  .header-logos-right img { height: 85px; }
+
+  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 1024px) { .layout { grid-template-columns: 1fr; } header {flex-direction: column; align-items: center;} .header-logos-right {justify-content: center;} }
+
+  .panel { background: var(--white); border: 1px solid var(--border-color); box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
+  .panel-header {
+    background: var(--dark-blue); color: #fff; padding: 10px 15px;
+    font-family: var(--mono); font-size: 0.8rem; letter-spacing: 1px;
+    display: flex; justify-content: space-between;
+  }
+  .panel-body { padding: 15px; }
+
+  fieldset { border: 1px solid var(--border-color); padding: 10px; margin: 0 0 15px 0; background: #FAF9F6; }
+  fieldset legend {
+    font-family: var(--mono); font-size: 0.65rem; color: #666;
+    background: var(--bg-color); padding: 2px 6px; border: 1px solid var(--border-color);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .grid-3-dist { display: grid; grid-template-columns: 1fr; gap: 5px; margin-bottom: 8px;}
+  
+  label { display: block; font-family: var(--sans); font-size: 0.75rem; color: #444; margin-bottom: 4px; }
+  input[type="number"], select {
+    width: 100%; padding: 6px; border: 1px solid #ccc;
+    font-family: var(--mono); font-size: 0.85rem; box-sizing: border-box;
+  }
+  select { background-color: #fff; border-color: var(--dark-blue); color: var(--dark-blue); font-weight: bold;}
+
+  .note { font-size: 0.65rem; color: #666; margin-top: 8px; line-height: 1.4; }
+  
+  .run-btn {
+    width: 100%; background: var(--rust); color: #fff; border: none; padding: 15px;
+    font-family: var(--mono); font-size: 0.9rem; font-weight: bold; cursor: pointer;
+    margin-top: 10px; box-shadow: 2px 2px 0px rgba(0,0,0,0.1); transition: background 0.2s;
+  }
+  .run-btn:hover { background: #A05230; }
+
+  .base-case-box {
+    border: 1px solid var(--border-color); padding: 12px; font-family: var(--serif);
+    font-size: 0.9rem; background: #fff; margin-bottom: 20px; line-height: 1.5;
+  }
+  .tabs { display: flex; border-bottom: 1px solid var(--dark-blue); margin-bottom: 20px; }
+  .tab { padding: 10px 20px; font-family: var(--serif); font-size: 1rem; cursor: pointer; color: #666; }
+  .tab.active { color: var(--dark-blue); font-weight: bold; border-bottom: 3px solid var(--rust); }
+
+  .stats-header { display: grid; grid-template-columns: repeat(6, 1fr); border-bottom: 1px solid var(--border-color); padding-bottom: 10px; margin-bottom: 20px; }
+  .stat-col { text-align: left; }
+  .stat-col .label { font-family: var(--mono); font-size: 0.65rem; color: #666; }
+  .stat-col .value { font-family: var(--mono); font-size: 1.1rem; color: var(--text-main); margin-top: 5px; font-weight: bold;}
+
+  .section-title { font-family: var(--serif); font-size: 1.2rem; color: var(--dark-blue); margin: 30px 0 10px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
+  .section-desc { font-size: 0.8rem; color: #666; margin-bottom: 15px; }
+
+  table.data-table, table.stats-table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 0.85rem; margin-bottom: 30px; background: #fff; }
+  table.data-table th { background: var(--dark-blue); color: #fff; text-align: left; padding: 8px 12px; font-family: var(--mono); font-weight: normal; font-size: 0.75rem; }
+  table.data-table td, table.stats-table td { border: 1px solid var(--border-color); padding: 8px 12px; font-family: var(--mono); }
+  table.stats-table td:first-child { background: var(--bg-color); width: 40%; color: #555; font-family: var(--sans); }
+  table.stats-table td:last-child { font-weight: bold; }
+
+  .chart-box { background: #fff; border: 1px solid var(--border-color); padding: 15px; margin-bottom: 20px; }
+  #resultados-ui { display: none; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div class="header-logos-left">
+      <a href="Capítulo7_2.pdf" target="_blank" title="Leer Capítulo 7">
+        <img src="Contributivo.png" alt="Portada Método Contributivo">
+      </a>
+    </div>
+    
+    <div class="header-title">
+      <h1>Simulador Monte Carlo — Modelo Mandelblatt-Camacaro</h1>
+      <p>Enfoque probabilístico del Método Contributivo. Transforma el cálculo determinístico en una distribución de frecuencias, con intervalos de confianza y análisis de sensibilidad ceteris paribus.</p>
+      <div class="cap-tag">CAP. 7 - SIMULACIÓN DE ESCENARIOS</div>
+    </div>
+
+    <div class="header-logos-right">
+      <img src="LogoMCE.png" alt="Miguel Camacaro Ediciones">
+      <img src="Valuador Inteligente.png" alt="Valuador Inteligente">
+    </div>
+  </header>
+
+  <div class="layout">
+    <!-- COLUMNA IZQUIERDA: PARÁMETROS -->
+    <div class="panel">
+      <div class="panel-header"><span>PARÁMETROS DEL MODELO</span></div>
+      <div class="panel-body">
+        
+        <fieldset>
+          <legend>DATOS FIJOS</legend>
+          <div class="grid-2" style="margin-bottom:10px;">
+            <div><label>Área Construcción Ac (m²)</label><input type="number" id="v_Ac" value="950"></div>
+            <div><label>Área Terreno At (m²)</label><input type="number" id="v_At" value="2750"></div>
+          </div>
+          <div class="grid-2">
+            <div><label>Factor Rescate Fr (adim)</label><input type="number" id="v_Fr" value="0.90" step="0.01"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>CUC - COSTO UNITARIO DE CONSTRUCCIÓN</legend>
+          <div class="grid-3-dist">
+            <select id="dist_Cuc">
+              <option value="fija">Fija (Determinista)</option>
+              <option value="triangular" selected>Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert">Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_Cuc" value="75000"></div>
+            <div><label>Más prob.</label><input type="number" id="base_Cuc" value="85030.91"></div>
+            <div><label>Máximo</label><input type="number" id="max_Cuc" value="95000"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>FC - FACTOR DE COMERCIALIZACIÓN</legend>
+          <div class="grid-3-dist">
+            <select id="dist_Fc">
+              <option value="fija">Fija</option>
+              <option value="triangular" selected>Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert">Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_Fc" value="1.25" step="0.01"></div>
+            <div><label>Más prob.</label><input type="number" id="base_Fc" value="1.35" step="0.01"></div>
+            <div><label>Máximo</label><input type="number" id="max_Fc" value="1.45" step="0.01"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Ct - CONTRIBUCIÓN DEL VALOR TIERRA</legend>
+          <div class="grid-3-dist">
+            <select id="dist_Ct">
+              <option value="fija">Fija</option>
+              <option value="triangular" selected>Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert">Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_Ct" value="0.2750" step="0.0001"></div>
+            <div><label>Más prob.</label><input type="number" id="base_Ct" value="0.2967" step="0.0001"></div>
+            <div><label>Máximo</label><input type="number" id="max_Ct" value="0.3250" step="0.0001"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>ea - EDAD APARENTE (años)</legend>
+          <div class="grid-3-dist">
+            <select id="dist_ea">
+              <option value="fija">Fija</option>
+              <option value="triangular">Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert" selected>Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_ea" value="15"></div>
+            <div><label>Más prob.</label><input type="number" id="base_ea" value="16"></div>
+            <div><label>Máximo</label><input type="number" id="max_ea" value="17"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>vu - VIDA ÚTIL (años)</legend>
+          <div class="grid-3-dist">
+            <select id="dist_vu">
+              <option value="fija">Fija</option>
+              <option value="triangular">Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert" selected>Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_vu" value="40"></div>
+            <div><label>Más prob.</label><input type="number" id="base_vu" value="50"></div>
+            <div><label>Máximo</label><input type="number" id="max_vu" value="60"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>CH - FACTOR HEIDECKE (adim)</legend>
+          <div class="grid-3-dist">
+            <select id="dist_CH">
+              <option value="fija">Fija</option>
+              <option value="triangular">Triangular</option>
+              <option value="uniforme" selected>Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert">Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_CH" value="0.02" step="0.01"></div>
+            <div><label>Base / Prob.</label><input type="number" id="base_CH" value="0.03" step="0.01"></div> 
+            <div><label>Máximo</label><input type="number" id="max_CH" value="0.10" step="0.01"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Vme - VALOR DE MÁQUINAS Y EQUIPOS (UM)</legend>
+          <div class="grid-3-dist">
+            <select id="dist_Vme">
+              <option value="fija" selected>Fija</option>
+              <option value="triangular">Triangular</option>
+              <option value="uniforme">Uniforme</option>
+              <option value="normal">Normal</option>
+              <option value="betapert">Beta PERT</option>
+            </select>
+          </div>
+          <div class="grid-3">
+            <div><label>Mínimo</label><input type="number" id="min_Vme" value="0"></div>
+            <div><label>Base / Prob.</label><input type="number" id="base_Vme" value="0"></div>
+            <div><label>Máximo</label><input type="number" id="max_Vme" value="0"></div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>SIMULACIÓN</legend>
+          <div class="grid-2">
+            <div>
+              <label>N° de pruebas</label>
+              <select id="n_pruebas">
+                <option value="1000">1.000</option>
+                <option value="10000">10.000</option>
+                <option value="100000" selected>100.000</option>
+              </select>
+            </div>
+            <div>
+              <label>Nivel de confianza</label>
+              <select id="n_confianza">
+                <option value="0.80" selected>80%</option>
+                <option value="0.90">90%</option>
+                <option value="0.95">95%</option>
+              </select>
+            </div>
+          </div>
+        </fieldset>
+
+        <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN</button>
+
+      </div>
+    </div>
+
+    <!-- LADO DERECHO: RESULTADOS -->
+    <div class="panel" id="resultados-ui">
+      <div class="panel-header">
+        <span>RESULTADOS DE LA SIMULACIÓN</span>
+        <span id="txt-npruebas">100.000 pruebas</span>
+      </div>
+      <div class="panel-body">
+        
+        <div class="base-case-box">
+          <strong>Caso base (determinístico):</strong> Vi = <span id="txt-vi-base">0</span> UM - Vut = <span id="txt-vut-base">0</span> UM/m² — ambos valores deterministas quedan contenidos dentro de los intervalos probabilísticos generados por la simulación.
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">Valor del Inmueble (Vi)</div>
+        </div>
+
+        <div class="stats-header">
+          <div class="stat-col"><div class="label">MEDIA</div><div class="value" id="h_media">0</div></div>
+          <div class="stat-col"><div class="label">MEDIANA</div><div class="value" id="h_mediana">0</div></div>
+          <div class="stat-col"><div class="label">DESV. ESTÁNDAR</div><div class="value" id="h_std">0</div></div>
+          <div class="stat-col"><div class="label">COEF. VARIACIÓN</div><div class="value" id="h_cv">0%</div></div>
+          <div class="stat-col"><div class="label">MÍNIMO</div><div class="value" id="h_min">0</div></div>
+          <div class="stat-col"><div class="label">MÁXIMO</div><div class="value" id="h_max">0</div></div>
+        </div>
+
+        <div class="chart-box"><canvas id="histograma" height="100"></canvas></div>
+
+        <div class="section-title">Intervalo de confianza al <span id="txt-conf-title">80%</span></div>
+        <div class="section-desc">Rango de valores donde se espera, con el nivel de certeza elegido, que se ubique el valor del inmueble.</div>
+        
+        <table class="data-table">
+          <thead><tr><th>Mínimo</th><th>Media</th><th>Máximo</th><th>C.V.</th></tr></thead>
+          <tbody><tr><td id="t_min">0</td><td id="t_med">0</td><td id="t_max">0</td><td id="t_cv">0%</td></tr></tbody>
+        </table>
+
+        <div class="section-title">Análisis de sensibilidad — Tornado</div>
+        <div class="section-desc">Contribución marginal de cada variable explicativa (Ceteris Paribus ±10%).</div>
+        <div class="chart-box"><canvas id="tornado" height="100"></canvas></div>
+
+        <div class="section-title">Estadísticas — valores de previsión</div>
+        <table class="stats-table">
+          <tbody>
+            <tr><td>Pruebas</td><td id="s_pruebas">100.000</td></tr>
+            <tr><td>Caso base</td><td id="s_base">0</td></tr>
+            <tr><td>Media</td><td id="s_media">0</td></tr>
+            <tr><td>Mediana</td><td id="s_mediana">0</td></tr>
+            <tr><td>Desviación estándar</td><td id="s_std">0</td></tr>
+            <tr><td>Varianza</td><td id="s_var">0</td></tr>
+            <tr><td>Sesgo</td><td id="s_sesgo">0</td></tr>
+            <tr><td>Curtosis</td><td id="s_curtosis">0</td></tr>
+            <tr><td>Coeficiente de variación</td><td id="s_cv">0%</td></tr>
+            <tr><td>Mínimo</td><td id="s_min">0</td></tr>
+            <tr><td>Máximo</td><td id="s_max">0</td></tr>
+            <tr><td>Ancho de rango</td><td id="s_rango">0</td></tr>
+          </tbody>
+        </table>
+
+      </div>
+      <div id="empty-state" style="text-align:center; padding: 60px 20px; color: var(--ink-soft); font-family: var(--mono); font-size: 0.85rem;">
+          Configure los parámetros a la izquierda y haga clic en "Ejecutar Simulación".
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+    let histogramaChart = null;
+    let tornadoChart = null;
+
+    const fNum = (num, decimals = 2) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
+
+    // --- GENERADORES ESTOCÁSTICOS ---
+    function randUniform(min, max) {
+        return Math.random() * (max - min) + min;
+    }
+
+    function randNormal(mean, std) {
+        let u = 1 - Math.random(); 
+        let v = Math.random();
+        let z = Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
+        return z * std + mean;
+    }
+
+    function randTriangular(min, max, mode) {
+        let u = Math.random();
+        let c = (mode - min) / (max - min);
+        if (u <= c) return min + Math.sqrt(u * (max - min) * (mode - min));
+        return max - Math.sqrt((1 - u) * (max - min) * (max - mode));
+    }
+
+    // Algoritmo de Johnk para Distribución Beta
+    function randBeta(alpha, beta) {
+      let u, v, w, x, y;
+      do {
+        u = Math.random();
+        v = Math.random();
+        x = Math.pow(u, 1 / alpha);
+        y = Math.pow(v, 1 / beta);
+        w = x + y;
+      } while (w > 1);
+      return x / w;
+    }
+
+    function randBetaPert(min, max, mode) {
+      if (min === max) return min;
+      let a = 1 + 4 * ((mode - min) / (max - min));
+      let b = 1 + 4 * ((max - mode) / (max - min));
+      let betaSample = randBeta(a, b);
+      return min + betaSample * (max - min);
+    }
+
+    const getV = (id) => {
+        return {
+            dist: document.getElementById('dist_'+id).value,
+            min: parseFloat(document.getElementById('min_'+id).value),
+            base: parseFloat(document.getElementById('base_'+id).value),
+            max: parseFloat(document.getElementById('max_'+id).value)
+        };
+    };
+
+    function getValorVar(p) {
+        if (p.dist === 'fija') return p.base;
+        if (p.dist === 'uniforme') return randUniform(p.min, p.max);
+        if (p.dist === 'triangular') return randTriangular(p.min, p.max, p.base);
+        if (p.dist === 'normal') {
+            let std = (p.max - p.min) / 6;
+            return randNormal(p.base, std);
+        }
+        if (p.dist === 'betapert') return randBetaPert(p.min, p.max, p.base);
+        return p.base;
+    }
+
+    // --- EVALUACIÓN MODELO CENTRAL ---
+    function calcularVi(Cuc, Fc, Ct, ea, vu, CH, Ac, Vme, Fr) {
+        let Vcn = Ac * Cuc;
+        let def = ea / vu;
+        let D = Math.min(1, Math.max(0, 0.5 * (def + Math.pow(def, 2)) + CH)); 
+        let num = (Vcn * (1 - (D * Fr)) + Vme) * Fc;
+        let den = 1 - (Ct * Fc);
+        return den > 0 ? num / den : 0;
+    }
+
+    function ejecutarSimulacion() {
+        try {
+            const iteraciones = parseInt(document.getElementById('n_pruebas').value);
+            const confNivel = parseFloat(document.getElementById('n_confianza').value);
+            
+            const Ac = parseFloat(document.getElementById('v_Ac').value);
+            const At = parseFloat(document.getElementById('v_At').value);
+            const Fr = parseFloat(document.getElementById('v_Fr').value);
+
+            let p_Cuc = getV('Cuc'), p_Fc = getV('Fc'), p_Ct = getV('Ct');
+            let p_ea = getV('ea'), p_vu = getV('vu'), p_CH = getV('CH'), p_Vme = getV('Vme');
+
+            // Validación matemática crucial (Ct * Fc < 1)
+            if (p_Ct.base * p_Fc.base >= 1) {
+                alert("Error: El producto de los valores base de Ct y Fc debe ser estrictamente menor a 1 para evitar divisiones por cero o resultados negativos.");
+                return;
+            }
+
+            const viBase = calcularVi(p_Cuc.base, p_Fc.base, p_Ct.base, p_ea.base, p_vu.base, p_CH.base, Ac, p_Vme.base, Fr);
+            const vutBase = (viBase * p_Ct.base) / At;
+
+            let resultados = new Float64Array(iteraciones);
+            let sum = 0;
+
+            for (let i = 0; i < iteraciones; i++) {
+                let rCuc, rFc, rCt, rea, rvu, rCH, rVme;
+                let validSample = false;
+                let attempts = 0;
+                
+                // Muestreo con restricción dinámica
+                do {
+                    rCuc = getValorVar(p_Cuc);
+                    rFc  = getValorVar(p_Fc);
+                    rCt  = getValorVar(p_Ct);
+                    rea  = getValorVar(p_ea);
+                    rvu  = getValorVar(p_vu);
+                    rCH  = getValorVar(p_CH);
+                    rVme = getValorVar(p_Vme);
+                    
+                    attempts++;
+                    if(attempts > 500) {
+                        alert("Los rangos de Ct y Fc generan combinaciones donde Ct*Fc >= 1 constantemente. Ajuste los parámetros.");
+                        return;
+                    }
+                    if ((rCt * rFc) < 1) validSample = true;
+                } while (!validSample);
+
+                let val = calcularVi(rCuc, rFc, rCt, rea, rvu, rCH, Ac, rVme, Fr);
+                resultados[i] = val;
+                sum += val;
+            }
+
+            // --- Estadísticas ---
+            resultados.sort();
+            let media = sum / iteraciones;
+            let mediana = resultados[Math.floor(iteraciones / 2)];
+            let min = resultados[0];
+            let max = resultados[iteraciones - 1];
+            let rango = max - min;
+
+            let sumSq = 0, sumCu3 = 0, sumCu4 = 0;
+            for (let i = 0; i < iteraciones; i++) {
+                let diff = resultados[i] - media;
+                sumSq += diff * diff;
+            }
+            let varianza = sumSq / (iteraciones - 1);
+            let std = Math.sqrt(varianza);
+            let cv = (std / media) * 100;
+
+            for (let i = 0; i < iteraciones; i++) {
+                let z = (resultados[i] - media) / std;
+                sumCu3 += Math.pow(z, 3);
+                sumCu4 += Math.pow(z, 4);
+            }
+            let sesgo = (iteraciones / ((iteraciones - 1) * (iteraciones - 2))) * sumCu3;
+            let curtosis = (sumCu4 / iteraciones) - 3;
+
+            // Intervalo Confianza
+            let alpha = (1 - confNivel) / 2;
+            let pMin = resultados[Math.floor(iteraciones * alpha)];
+            let pMax = resultados[Math.floor(iteraciones * (1 - alpha))];
+
+            // UI Update
+            document.getElementById('empty-state').style.display = 'none';
+            document.getElementById('resultados-ui').style.display = 'block';
+            
+            document.getElementById('txt-npruebas').innerText = fNum(iteraciones, 0) + " pruebas";
+            document.getElementById('txt-vi-base').innerText = fNum(viBase);
+            document.getElementById('txt-vut-base').innerText = fNum(vutBase);
+
+            document.getElementById('h_media').innerText = fNum(media, 1);
+            document.getElementById('h_mediana').innerText = fNum(mediana, 1);
+            document.getElementById('h_std').innerText = fNum(std, 2);
+            document.getElementById('h_cv').innerText = fNum(cv, 2) + '%';
+            document.getElementById('h_min').innerText = fNum(min, 2);
+            document.getElementById('h_max').innerText = fNum(max, 2);
+
+            document.getElementById('txt-conf-title').innerText = (confNivel*100) + '%';
+            document.getElementById('t_min').innerText = fNum(pMin);
+            document.getElementById('t_med').innerText = fNum(media);
+            document.getElementById('t_max').innerText = fNum(pMax);
+            document.getElementById('t_cv').innerText = fNum(cv, 2) + '%';
+
+            document.getElementById('s_pruebas').innerText = fNum(iteraciones, 0);
+            document.getElementById('s_base').innerText = fNum(viBase);
+            document.getElementById('s_media').innerText = fNum(media);
+            document.getElementById('s_mediana').innerText = fNum(mediana);
+            document.getElementById('s_std').innerText = fNum(std);
+            document.getElementById('s_var').innerText = fNum(varianza);
+            document.getElementById('s_sesgo').innerText = fNum(sesgo, 4);
+            document.getElementById('s_curtosis').innerText = fNum(curtosis, 2);
+            document.getElementById('s_cv').innerText = fNum(cv, 2) + '%';
+            document.getElementById('s_min').innerText = fNum(min);
+            document.getElementById('s_max').innerText = fNum(max);
+            document.getElementById('s_rango').innerText = fNum(rango);
+
+            crearHistograma(resultados, min, max, pMin, pMax, media);
+            crearTornado(Ac, p_Vme.base, Fr, viBase, p_Cuc.base, p_Fc.base, p_Ct.base, p_ea.base, p_vu.base, p_CH.base);
+            
+        } catch (error) {
+            console.error(error);
+            alert("Error en la ejecución. Verifique los datos de entrada.");
+        }
+    }
+
+    // --- GRÁFICOS ---
+    function crearHistograma(data, min, max, pMin, pMax, media) {
+        if(histogramaChart) histogramaChart.destroy();
+        const bins = 45;
+        const width = (max - min) / bins;
+        let freq = new Array(bins).fill(0);
+        let labels = [];
+        let bgColors = [];
+
+        for(let i=0; i<data.length; i++){
+            let idx = Math.floor((data[i] - min) / width);
+            if(idx >= bins) idx = bins - 1;
+            freq[idx]++;
+        }
+        
+        for(let i=0; i<bins; i++){
+            let binCenter = min + (i * width) + (width / 2);
+            labels.push(fNum(min + (i*width), 0));
+            
+            // Highlight para intervalo de confianza
+            if (binCenter >= pMin && binCenter <= pMax) {
+                bgColors.push('#1C456B'); // Intervalo principal
+            } else {
+                bgColors.push('#B9CEDB'); // Colas
+            }
+        }
+
+        // Plugin para línea punteada vertical (Media)
+        const pluginLineaMedia = {
+            id: 'pluginLineaMedia',
+            afterDraw: (chart) => {
+                const ctx = chart.ctx;
+                const xAxis = chart.scales.x;
+                const yAxis = chart.scales.y;
+                const porcentajeMedia = (media - min) / (max - min);
+                const posMedia = xAxis.left + (porcentajeMedia * xAxis.width);
+
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.moveTo(posMedia, yAxis.top);
+                ctx.lineTo(posMedia, yAxis.bottom);
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = '#333333';
+                ctx.stroke();
+                ctx.restore();
+            }
+        };
+
+        const ctx = document.getElementById('histograma').getContext('2d');
+        histogramaChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Frecuencia',
+                    data: freq,
+                    backgroundColor: bgColors,
+                    barPercentage: 1.0,
+                    categoryPercentage: 0.95
+                }]
+            },
+            plugins: [pluginLineaMedia],
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {display: false},
+                    title: { display: true, text: 'Distribución del Valor del Inmueble (UM)', align: 'start', font: {family: "'Segoe UI', sans-serif", weight: 'normal', color: '#666'} }
+                },
+                scales: {
+                    x: { ticks: {maxTicksLimit: 6, font: {family: "monospace", size: 10}} },
+                    y: { ticks: {maxTicksLimit: 5, font: {family: "monospace", size: 10}} }
+                }
+            }
+        });
+    }
+
+    function crearTornado(Ac, VmeBase, Fr, viBase, bCuc, bFc, bCt, bea, bvu, bCH) {
+        let vars = {
+            'Fc: Factor comercialización': bFc,
+            'Cuc: Costo unitario constr.': bCuc,
+            'vu: Vida útil': bvu,
+            'Ct: Contribución tierra': bCt,
+            'CH: Factor Heidecke': bCH,
+            'ea: Edad aparente': bea,
+            'Vme: Máquinas y Equipos': VmeBase
+        };
+
+        let mapKeys = Object.keys(vars);
+        let pct = [];
+
+        mapKeys.forEach(k => {
+            let t = {...vars};
+            t[k] = vars[k] * 1.10; 
+            if((t['Ct: Contribución tierra'] * t['Fc: Factor comercialización']) >= 1) return; 
+            
+            let viVar = calcularVi(t['Cuc: Costo unitario constr.'], t['Fc: Factor comercialización'], t['Ct: Contribución tierra'], t['ea: Edad aparente'], t['vu: Vida útil'], t['CH: Factor Heidecke'], Ac, t['Vme: Máquinas y Equipos'], Fr);
+            
+            if(viBase > 0) {
+               let diff = ((viVar - viBase) / viBase) * 100;
+               pct.push({name: k, val: diff});
+            }
+        });
+
+        pct.sort((a,b) => Math.abs(b.val) - Math.abs(a.val));
+
+        let labels = pct.map(x => x.name);
+        let dataPos = pct.map(x => x.val >= 0 ? x.val : 0);
+        let dataNeg = pct.map(x => x.val < 0 ? x.val : 0);
+
+        if(tornadoChart) tornadoChart.destroy();
+        const ctx = document.getElementById('tornado').getContext('2d');
+        tornadoChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [
+                    { data: dataPos, backgroundColor: '#1C456B' },
+                    { data: dataNeg, backgroundColor: '#B8623B' }
+                ]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: {display: false},
+                    tooltip: { callbacks: { label: function(ctx) { return fNum(ctx.raw, 2) + '%'; } } }
+                },
+                scales: {
+                    x: { ticks: {callback: function(v){return v+'%';}, font: {family: "monospace", size: 10}} },
+                    y: { ticks: {font: {family: "'Segoe UI', sans-serif", size: 11}} }
+                }
+            }
+        });
+    }
+</script>
+</body>
+</html>
