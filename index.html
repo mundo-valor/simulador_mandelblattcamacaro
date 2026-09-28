@@ -138,7 +138,8 @@
   .stat-col .value { font-family: var(--mono); font-size: 1.1rem; color: var(--text-main); margin-top: 5px; font-weight: bold;}
 
   .section-title { font-family: var(--serif); font-size: 1.2rem; color: var(--dark-blue); margin: 30px 0 10px 0; border-bottom: 1px solid var(--border-color); padding-bottom: 5px; }
-  .section-desc { font-size: 0.8rem; color: #666; margin-bottom: 15px; }
+  .sub-title { font-family: var(--serif); font-size: 1rem; color: var(--dark-blue); margin: 22px 0 4px 0; font-weight: bold; }
+  .section-desc { font-size: 0.8rem; color: #666; margin-bottom: 15px; line-height: 1.5; }
 
   table.data-table, table.stats-table { width: 100%; border-collapse: collapse; font-family: var(--sans); font-size: 0.85rem; margin-bottom: 30px; background: #fff; }
   table.data-table th { background: var(--dark-blue); color: #fff; text-align: left; padding: 8px 12px; font-family: var(--mono); font-weight: normal; font-size: 0.75rem; }
@@ -148,6 +149,7 @@
 
   .chart-box { background: #fff; border: 1px solid var(--border-color); padding: 15px; margin-bottom: 20px; }
   #resultados-ui { display: none; }
+  #empty-state { text-align: center; padding: 60px 20px; color: #666; font-family: var(--mono); font-size: 0.85rem; }
 
   /* ESTILOS PARA IMPRESIÓN */
   @media print {
@@ -309,7 +311,7 @@
             <div><label>Base / Prob.</label><input type="number" id="base_CH" value="0.03" step="0.01"></div> 
             <div><label>Máximo</label><input type="number" id="max_CH" value="0.10" step="0.01"></div>
           </div>
-          <div class="note">δ (depreciación) se calcula con la fórmula Ross-Heidecke: δ = ea/vu + CH·(1 - ea/vu).</div>
+          <div class="note">δ (depreciación) se calcula con el criterio Ross-Heidecke: δ = (1 − α)·CH + α, donde α = ½·(ea/vu + ea²/vu²).</div>
         </fieldset>
 
         <fieldset>
@@ -343,6 +345,11 @@
         <button class="run-btn" onclick="ejecutarSimulacion()">EJECUTAR SIMULACIÓN</button>
 
       </div>
+    </div>
+
+    <!-- LADO DERECHO: MENSAJE INICIAL (visible hasta la primera simulación) -->
+    <div class="panel" id="empty-state">
+      Configure los parámetros a la izquierda y haga clic en "Ejecutar Simulación".
     </div>
 
     <!-- LADO DERECHO: RESULTADOS -->
@@ -384,8 +391,18 @@
         </table>
 
         <div class="section-title">Análisis de sensibilidad — Tornado</div>
-        <div class="section-desc">Contribución marginal de cada variable explicativa (Ceteris Paribus ±10%).</div>
-        <div class="chart-box"><canvas id="tornado" height="100"></canvas></div>
+
+        <div class="sub-title">A. Rango declarado de cada variable</div>
+        <div class="section-desc">Variación porcentual de Vi cuando cada variable recorre, por sí sola, el <span id="txt-conf-sens">80%</span> central de su propia distribución (del percentil inferior al superior), con las demás en su valor más probable. <strong>Este gráfico cambia al modificar mínimos, máximos, valor más probable o tipo de distribución.</strong> Una variable con distribución Fija no produce barra.</div>
+        <div class="chart-box"><canvas id="tornadoRango" height="100"></canvas></div>
+
+        <div class="sub-title">B. Contribución a la varianza</div>
+        <div class="section-desc">Peso de cada variable en la dispersión del resultado, calculado con la correlación de rangos (Spearman) entre cada entrada y Vi sobre todas las pruebas simuladas. Los porcentajes suman 100% en valor absoluto; el signo indica si al subir la variable sube (+) o baja (−) el valor del inmueble.</div>
+        <div class="chart-box"><canvas id="tornadoVar" height="100"></canvas></div>
+
+        <div class="sub-title">C. Ceteris paribus ±10%</div>
+        <div class="section-desc">Efecto sobre Vi de mover cada variable un 10% por debajo y un 10% por encima de su valor más probable, manteniendo las demás constantes. Es una medida de elasticidad local: depende únicamente de los valores más probables, no de los rangos ni de las distribuciones.</div>
+        <div class="chart-box"><canvas id="tornado10" height="100"></canvas></div>
 
         <div class="section-title">Estadísticas — valores de previsión</div>
         <table class="stats-table">
@@ -406,18 +423,27 @@
         </table>
 
       </div>
-      <div id="empty-state" style="text-align:center; padding: 60px 20px; color: var(--ink-soft); font-family: var(--mono); font-size: 0.85rem;">
-          Configure los parámetros a la izquierda y haga clic en "Ejecutar Simulación".
-      </div>
     </div>
   </div>
 </div>
 
 <script>
     let histogramaChart = null;
-    let tornadoChart = null;
+    let tornadoRangoChart = null;
+    let tornadoVarChart = null;
+    let tornado10Chart = null;
 
     const fNum = (num, decimals = 2) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
+
+    const VARS = ['Cuc', 'Fc', 'Ct', 'ea', 'vu', 'CH'];
+    const ETIQUETAS = {
+        Cuc: 'Cuc: Costo unitario constr.',
+        Fc:  'Fc: Factor comercialización',
+        Ct:  'Ct: Contribución tierra',
+        ea:  'ea: Edad aparente',
+        vu:  'vu: Vida útil',
+        CH:  'CH: Factor Heidecke'
+    };
 
     // --- GENERADORES ESTOCÁSTICOS ---
     function randUniform(min, max) { return Math.random() * (max - min) + min; }
@@ -429,7 +455,19 @@
         return z * std + mean;
     }
 
+    // Normal truncada a [min, max] (con σ = (max-min)/6 casi no altera la forma,
+    // pero evita valores absurdos como una vida útil negativa)
+    function randNormalTruncada(mean, std, min, max) {
+        if (std <= 0) return mean;
+        for (let i = 0; i < 50; i++) {
+            const x = randNormal(mean, std);
+            if (x >= min && x <= max) return x;
+        }
+        return Math.min(max, Math.max(min, mean));
+    }
+
     function randTriangular(min, max, mode) {
+        if (max <= min) return min;
         let u = Math.random();
         let c = (mode - min) / (max - min);
         if (u <= c) return min + Math.sqrt(u * (max - min) * (mode - min));
@@ -443,7 +481,7 @@
         u = Math.random(); v = Math.random();
         x = Math.pow(u, 1 / alpha); y = Math.pow(v, 1 / beta);
         w = x + y;
-      } while (w > 1);
+      } while (w > 1 || w === 0);
       return x / w;
     }
 
@@ -470,10 +508,27 @@
         if (p.dist === 'triangular') return randTriangular(p.min, p.max, p.base);
         if (p.dist === 'normal') {
             let std = (p.max - p.min) / 6;
-            return randNormal(p.base, std);
+            return randNormalTruncada(p.base, std, p.min, p.max);
         }
         if (p.dist === 'betapert') return randBetaPert(p.min, p.max, p.base);
         return p.base;
+    }
+
+    // Devuelve un mensaje de error (string) o null si todo está correcto
+    function validarParametros(params) {
+        for (const k of VARS) {
+            const p = params[k];
+            if (p.dist === 'fija') {
+                if (isNaN(p.base)) return `Introduzca un valor válido en "Más prob." de ${ETIQUETAS[k]}.`;
+                continue;
+            }
+            if (isNaN(p.min) || isNaN(p.base) || isNaN(p.max)) return `Complete mínimo, más probable y máximo de ${ETIQUETAS[k]}.`;
+            if (p.min > p.max) return `En ${ETIQUETAS[k]} el mínimo no puede ser mayor que el máximo.`;
+            if ((p.dist === 'triangular' || p.dist === 'betapert') && (p.base < p.min || p.base > p.max)) {
+                return `En ${ETIQUETAS[k]} el valor más probable debe estar entre el mínimo y el máximo.`;
+            }
+        }
+        return null;
     }
 
     // --- EVALUACIÓN MODELO CENTRAL CON RESTRICCIÓN DE MAQUINARIA ---
@@ -483,11 +538,43 @@
         // Límite del 10% para la maquinaria y equipos
         let Vme = Math.min(VmeInput, Vcn * 0.10);
         
+        // Ross-Heidecke: α = ½·(ea/vu + (ea/vu)²)   (Ec. 3.7)
+        //                δ = (1 − α)·c + α, con c = CH  (Ec. 3.6)
         let def = ea / vu;
-        let D = Math.min(1, Math.max(0, 0.5 * (def + Math.pow(def, 2)) + CH)); 
+        let alfa = 0.5 * (def + Math.pow(def, 2));
+        let D = Math.min(1, Math.max(0, (1 - alfa) * CH + alfa)); 
         let num = (Vcn * (1 - (D * Fr)) + Vme) * Fc;
         let den = 1 - (Ct * Fc);
         return den > 0 ? num / den : 0;
+    }
+
+    // --- UTILIDADES ESTADÍSTICAS PARA LA SENSIBILIDAD ---
+    function percentil(ordenado, p) {
+        const i = Math.min(ordenado.length - 1, Math.max(0, Math.floor(ordenado.length * p)));
+        return ordenado[i];
+    }
+
+    function rangos(arr) {
+        const n = arr.length;
+        const idx = new Uint32Array(n);
+        for (let i = 0; i < n; i++) idx[i] = i;
+        idx.sort((a, b) => arr[a] - arr[b]);
+        const r = new Float64Array(n);
+        for (let i = 0; i < n; i++) r[idx[i]] = i;
+        return r;
+    }
+
+    function pearson(x, y) {
+        const n = x.length;
+        let mx = 0, my = 0;
+        for (let i = 0; i < n; i++) { mx += x[i]; my += y[i]; }
+        mx /= n; my /= n;
+        let sxy = 0, sxx = 0, syy = 0;
+        for (let i = 0; i < n; i++) {
+            const dx = x[i] - mx, dy = y[i] - my;
+            sxy += dx * dy; sxx += dx * dx; syy += dy * dy;
+        }
+        return (sxx > 0 && syy > 0) ? sxy / Math.sqrt(sxx * syy) : 0;
     }
 
     function ejecutarSimulacion() {
@@ -500,48 +587,57 @@
             const Fr = parseFloat(document.getElementById('v_Fr').value);
             const VmeBase = parseFloat(document.getElementById('base_Vme').value);
 
-            let p_Cuc = getV('Cuc'), p_Fc = getV('Fc'), p_Ct = getV('Ct');
-            let p_ea = getV('ea'), p_vu = getV('vu'), p_CH = getV('CH');
+            const params = {};
+            VARS.forEach(k => params[k] = getV(k));
 
-            if (isNaN(p_CH.base)) {
-                alert("Por favor, introduzca un valor válido en el 'Base / Prob.' del Factor Heidecke (CH).");
-                return;
-            }
+            const errorParam = validarParametros(params);
+            if (errorParam) { alert(errorParam); return; }
 
-            if (p_Ct.base * p_Fc.base >= 1) {
+            if (params.Ct.base * params.Fc.base >= 1) {
                 alert("Error: El producto de los valores base de Ct y Fc debe ser estrictamente menor a 1.");
                 return;
             }
 
-            const viBase = calcularVi(p_Cuc.base, p_Fc.base, p_Ct.base, p_ea.base, p_vu.base, p_CH.base, Ac, VmeBase, Fr);
-            const vutBase = (viBase * p_Ct.base) / At;
+            const base = {};
+            VARS.forEach(k => base[k] = params[k].base);
 
-            let resultados = new Float64Array(iteraciones);
+            const viDe = (o) => (o.Ct * o.Fc < 1)
+                ? calcularVi(o.Cuc, o.Fc, o.Ct, o.ea, o.vu, o.CH, Ac, VmeBase, Fr)
+                : NaN;
+
+            const viBase = viDe(base);
+            const vutBase = (viBase * base.Ct) / At;
+
+            // Se conservan las muestras de entrada y salida (sin ordenar) para el análisis de sensibilidad
+            const muestras = {};
+            VARS.forEach(k => muestras[k] = new Float64Array(iteraciones));
+            const salidas = new Float64Array(iteraciones);
             let sum = 0;
 
             for (let i = 0; i < iteraciones; i++) {
-                let rCuc, rFc, rCt, rea, rvu, rCH;
+                let s;
                 let validSample = false;
                 let attempts = 0;
                 
                 do {
-                    rCuc = getValorVar(p_Cuc); rFc  = getValorVar(p_Fc); rCt  = getValorVar(p_Ct);
-                    rea  = getValorVar(p_ea); rvu  = getValorVar(p_vu); rCH  = getValorVar(p_CH);
+                    s = {};
+                    VARS.forEach(k => s[k] = getValorVar(params[k]));
                     
                     attempts++;
-                    if(attempts > 500) {
+                    if (attempts > 500) {
                         alert("Los rangos de Ct y Fc generan combinaciones donde Ct*Fc >= 1 constantemente. Ajuste los parámetros.");
                         return;
                     }
-                    if ((rCt * rFc) < 1) validSample = true;
+                    if ((s.Ct * s.Fc) < 1) validSample = true;
                 } while (!validSample);
 
-                let val = calcularVi(rCuc, rFc, rCt, rea, rvu, rCH, Ac, VmeBase, Fr);
-                resultados[i] = val;
+                const val = calcularVi(s.Cuc, s.Fc, s.Ct, s.ea, s.vu, s.CH, Ac, VmeBase, Fr);
+                VARS.forEach(k => muestras[k][i] = s[k]);
+                salidas[i] = val;
                 sum += val;
             }
 
-            resultados.sort();
+            const resultados = salidas.slice().sort();
             let media = sum / iteraciones;
             let mediana = resultados[Math.floor(iteraciones / 2)];
             let min = resultados[0];
@@ -555,19 +651,22 @@
             }
             let varianza = sumSq / (iteraciones - 1);
             let std = Math.sqrt(varianza);
-            let cv = (std / media) * 100;
+            let cv = media !== 0 ? (std / media) * 100 : 0;
 
-            for (let i = 0; i < iteraciones; i++) {
-                let z = (resultados[i] - media) / std;
-                sumCu3 += Math.pow(z, 3);
-                sumCu4 += Math.pow(z, 4);
+            let sesgo = 0, curtosis = 0;
+            if (std > 0) {
+                for (let i = 0; i < iteraciones; i++) {
+                    let z = (resultados[i] - media) / std;
+                    sumCu3 += Math.pow(z, 3);
+                    sumCu4 += Math.pow(z, 4);
+                }
+                sesgo = (iteraciones / ((iteraciones - 1) * (iteraciones - 2))) * sumCu3;
+                curtosis = (sumCu4 / iteraciones) - 3;
             }
-            let sesgo = (iteraciones / ((iteraciones - 1) * (iteraciones - 2))) * sumCu3;
-            let curtosis = (sumCu4 / iteraciones) - 3;
 
             let alpha = (1 - confNivel) / 2;
-            let pMin = resultados[Math.floor(iteraciones * alpha)];
-            let pMax = resultados[Math.floor(iteraciones * (1 - alpha))];
+            let pMin = percentil(resultados, alpha);
+            let pMax = percentil(resultados, 1 - alpha);
 
             document.getElementById('empty-state').style.display = 'none';
             document.getElementById('resultados-ui').style.display = 'block';
@@ -583,7 +682,8 @@
             document.getElementById('h_min').innerText = fNum(min, 2);
             document.getElementById('h_max').innerText = fNum(max, 2);
 
-            document.getElementById('txt-conf-title').innerText = (confNivel*100) + '%';
+            document.getElementById('txt-conf-title').innerText = Math.round(confNivel * 100) + '%';
+            document.getElementById('txt-conf-sens').innerText = Math.round(confNivel * 100) + '%';
             document.getElementById('t_min').innerText = fNum(pMin);
             document.getElementById('t_med').innerText = fNum(media);
             document.getElementById('t_max').innerText = fNum(pMax);
@@ -603,7 +703,49 @@
             document.getElementById('s_rango').innerText = fNum(rango);
 
             crearHistograma(resultados, min, max, pMin, pMax, media);
-            crearTornado(Ac, VmeBase, Fr, viBase, p_Cuc.base, p_Fc.base, p_Ct.base, p_ea.base, p_vu.base, p_CH.base);
+
+            // ---------- SENSIBILIDAD ----------
+            const dPct = (v) => (isNaN(v) || viBase <= 0) ? 0 : ((v - viBase) / viBase) * 100;
+
+            // C. Ceteris paribus ±10% (bilateral, solo depende de los valores base)
+            const sens10 = VARS.map(k => ({
+                nombre: ETIQUETAS[k],
+                menos: dPct(viDe({ ...base, [k]: base[k] * 0.90 })),
+                mas:   dPct(viDe({ ...base, [k]: base[k] * 1.10 }))
+            }));
+            sens10.sort((a, b) => Math.max(Math.abs(b.menos), Math.abs(b.mas)) - Math.max(Math.abs(a.menos), Math.abs(a.mas)));
+
+            // A. Recorrido de cada variable por su propio rango declarado (percentiles de su distribución)
+            const sensRango = VARS.map(k => {
+                const orden = muestras[k].slice().sort();
+                const qLo = percentil(orden, alpha);
+                const qHi = percentil(orden, 1 - alpha);
+                const pLo = dPct(viDe({ ...base, [k]: qLo }));
+                const pHi = dPct(viDe({ ...base, [k]: qHi }));
+                return { nombre: ETIQUETAS[k], qLo, qHi, pLo, pHi, ancho: Math.abs(pHi - pLo) };
+            });
+            sensRango.sort((a, b) => b.ancho - a.ancho);
+
+            // B. Contribución a la varianza (correlación de rangos de Spearman)
+            const rSalida = rangos(salidas);
+            const corr = VARS.map(k => {
+                const orden0 = muestras[k];
+                let constante = true;
+                for (let i = 1; i < orden0.length; i++) { if (orden0[i] !== orden0[0]) { constante = false; break; } }
+                const r = constante ? 0 : pearson(rangos(muestras[k]), rSalida);
+                return { nombre: ETIQUETAS[k], r };
+            });
+            const sumaR2 = corr.reduce((a, c) => a + c.r * c.r, 0);
+            const contrib = corr.map(c => ({
+                nombre: c.nombre,
+                r: c.r,
+                pct: sumaR2 > 0 ? Math.sign(c.r) * (c.r * c.r / sumaR2) * 100 : 0
+            }));
+            contrib.sort((a, b) => Math.abs(b.pct) - Math.abs(a.pct));
+
+            crearTornadoRango(sensRango);
+            crearTornadoVar(contrib);
+            crearTornado10(sens10);
             
         } catch (error) {
             console.error(error);
@@ -614,7 +756,8 @@
     function crearHistograma(data, min, max, pMin, pMax, media) {
         if(histogramaChart) histogramaChart.destroy();
         const bins = 50;
-        const width = (max - min) / bins;
+        let width = (max - min) / bins;
+        if (!(width > 0)) width = 1; // todas las variables fijas: un solo valor
         let freq = new Array(bins).fill(0);
         let labels = [];
         let bgColors = [];
@@ -642,7 +785,7 @@
                 const ctx = chart.ctx;
                 const xAxis = chart.scales.x;
                 const yAxis = chart.scales.y;
-                const porcentajeMedia = (media - min) / (max - min);
+                const porcentajeMedia = max > min ? (media - min) / (max - min) : 0.5;
                 const posMedia = xAxis.left + (porcentajeMedia * xAxis.width);
 
                 ctx.save();
@@ -675,7 +818,7 @@
                 responsive: true,
                 plugins: {
                     legend: {display: false},
-                    title: { display: true, text: 'Distribución del Valor del Inmueble (UM)', align: 'start', font: {family: "'Segoe UI', sans-serif", weight: 'normal', color: '#666'} }
+                    title: { display: true, text: 'Distribución del Valor del Inmueble (UM)', align: 'start', font: {family: "'Segoe UI', sans-serif", weight: 'normal'}, color: '#666' }
                 },
                 scales: {
                     x: { ticks: {maxTicksLimit: 6, font: {family: "monospace", size: 10}} },
@@ -685,60 +828,94 @@
         });
     }
 
-    function crearTornado(Ac, VmeBase, Fr, viBase, bCuc, bFc, bCt, bea, bvu, bCH) {
-        let vars = {
-            'Fc: Factor comercialización': bFc,
-            'Cuc: Costo unitario constr.': bCuc,
-            'vu: Vida útil': bvu,
-            'Ct: Contribución tierra': bCt,
-            'CH: Factor Heidecke': bCH,
-            'ea: Edad aparente': bea
-        };
+    const escalaPct = (titulo) => ({
+        title: { display: true, text: titulo, font: {family: "'Segoe UI', sans-serif", size: 11} },
+        ticks: { callback: function(v){ return v + '%'; }, font: {family: "monospace", size: 10} }
+    });
+    const escalaEtiquetas = { ticks: { font: {family: "'Segoe UI', sans-serif", size: 11} }, grid: { display: false } };
 
-        let mapKeys = Object.keys(vars);
-        let pct = [];
-
-        mapKeys.forEach(k => {
-            let t = {...vars};
-            t[k] = vars[k] * 1.10; 
-            if((t['Ct: Contribución tierra'] * t['Fc: Factor comercialización']) >= 1) return; 
-            
-            let viVar = calcularVi(t['Cuc: Costo unitario constr.'], t['Fc: Factor comercialización'], t['Ct: Contribución tierra'], t['ea: Edad aparente'], t['vu: Vida útil'], t['CH: Factor Heidecke'], Ac, VmeBase, Fr);
-            
-            if(viBase > 0) {
-               let diff = ((viVar - viBase) / viBase) * 100;
-               pct.push({name: k, val: diff});
-            }
-        });
-
-        pct.sort((a,b) => Math.abs(b.val) - Math.abs(a.val));
-
-        let labels = pct.map(x => x.name);
-        let dataPos = pct.map(x => x.val >= 0 ? x.val : 0);
-        let dataNeg = pct.map(x => x.val < 0 ? x.val : 0);
-
-        if(tornadoChart) tornadoChart.destroy();
-        const ctx = document.getElementById('tornado').getContext('2d');
-        tornadoChart = new Chart(ctx, {
+    // A. Barras flotantes: de Vi(percentil inferior) a Vi(percentil superior)
+    function crearTornadoRango(items) {
+        if (tornadoRangoChart) tornadoRangoChart.destroy();
+        const ctx = document.getElementById('tornadoRango').getContext('2d');
+        tornadoRangoChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: labels,
+                labels: items.map(x => x.nombre),
+                datasets: [{
+                    data: items.map(x => [Math.min(x.pLo, x.pHi), Math.max(x.pLo, x.pHi)]),
+                    backgroundColor: '#1C456B',
+                    minBarLength: 2
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function(c) {
+                        const it = items[c.dataIndex];
+                        return [
+                            'Variable: ' + fNum(it.qLo, 4) + ' → ' + fNum(it.qHi, 4),
+                            'Efecto en Vi: ' + fNum(it.pLo, 2) + '% → ' + fNum(it.pHi, 2) + '%'
+                        ];
+                    } } }
+                },
+                scales: { x: escalaPct('Variación de Vi respecto al caso base (%)'), y: escalaEtiquetas }
+            }
+        });
+    }
+
+    // B. Contribución a la varianza con signo
+    function crearTornadoVar(items) {
+        if (tornadoVarChart) tornadoVarChart.destroy();
+        const ctx = document.getElementById('tornadoVar').getContext('2d');
+        tornadoVarChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: items.map(x => x.nombre),
+                datasets: [{
+                    data: items.map(x => x.pct),
+                    backgroundColor: items.map(x => x.pct >= 0 ? '#1C456B' : '#B8623B'),
+                    minBarLength: 2
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: { callbacks: { label: function(c) {
+                        const it = items[c.dataIndex];
+                        return ['Contribución: ' + fNum(it.pct, 1) + '%', 'Correlación de rangos: ' + fNum(it.r, 3)];
+                    } } }
+                },
+                scales: { x: escalaPct('Contribución a la varianza de Vi (%)'), y: escalaEtiquetas }
+            }
+        });
+    }
+
+    // C. Ceteris paribus ±10% (bilateral)
+    function crearTornado10(items) {
+        if (tornado10Chart) tornado10Chart.destroy();
+        const ctx = document.getElementById('tornado10').getContext('2d');
+        tornado10Chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: items.map(x => x.nombre),
                 datasets: [
-                    { data: dataPos, backgroundColor: '#1C456B' },
-                    { data: dataNeg, backgroundColor: '#B8623B' }
+                    { label: 'Variable −10%', data: items.map(x => x.menos), backgroundColor: '#B8623B', grouped: false, barPercentage: 0.7 },
+                    { label: 'Variable +10%', data: items.map(x => x.mas),   backgroundColor: '#1C456B', grouped: false, barPercentage: 0.7 }
                 ]
             },
             options: {
                 indexAxis: 'y',
                 responsive: true,
                 plugins: {
-                    legend: {display: false},
-                    tooltip: { callbacks: { label: function(ctx) { return fNum(ctx.raw, 2) + '%'; } } }
+                    legend: { display: true, position: 'bottom' },
+                    tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + fNum(c.raw, 2) + '% en Vi'; } } }
                 },
-                scales: {
-                    x: { ticks: {callback: function(v){return v+'%';}, font: {family: "monospace", size: 10}} },
-                    y: { ticks: {font: {family: "'Segoe UI', sans-serif", size: 11}} }
-                }
+                scales: { x: escalaPct('Variación de Vi respecto al caso base (%)'), y: escalaEtiquetas }
             }
         });
     }
