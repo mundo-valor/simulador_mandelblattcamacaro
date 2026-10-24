@@ -83,7 +83,7 @@
   }
 
   /* LAYOUT Y PANELES */
-  .layout { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+  .layout { display: grid; grid-template-columns: minmax(480px, 36%) 1fr; gap: 20px; align-items: start; }
 
   .panel { background: var(--white); border: 1px solid var(--border-color); box-shadow: 2px 2px 5px rgba(0,0,0,0.05); }
   .panel-header {
@@ -100,11 +100,12 @@
   }
 
   .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .grid-3 input[data-num] { font-size: 0.78rem; padding: 6px 4px; }
   .grid-3-dist { display: grid; grid-template-columns: 1fr; gap: 5px; margin-bottom: 8px;}
   
   label { display: block; font-family: var(--sans); font-size: 0.75rem; color: #444; margin-bottom: 4px; }
-  input[type="number"], select {
+  input[type="number"], input[data-num], select {
     width: 100%; padding: 6px; border: 1px solid #ccc;
     font-family: var(--mono); font-size: 0.85rem; box-sizing: border-box;
   }
@@ -180,7 +181,7 @@
     <!-- IMAGEN DEL LIBRO (ESTÁTICA) -->
     <div class="header-book">
       <img src="Contributivo.png" alt="Portada Método Contributivo" class="book-cover">
-      <div class="book-tag">CAP. 7 - SIMULACIÓN DE ESCENARIOS</div>
+      <a class="book-tag" href="Capitulo7.pdf" target="_blank" rel="noopener" title="Abrir el Capítulo 7" style="display:inline-block;text-decoration:none;color:inherit;cursor:pointer">CAP. 7 - SIMULACIÓN DE ESCENARIOS</a>
     </div>
 
     <div class="header-right">
@@ -193,15 +194,16 @@
     <div class="panel">
       <div class="panel-header"><span>PARÁMETROS DEL MODELO</span></div>
       <div class="panel-body">
+        <div class="note" style="margin:0 0 12px 0;">Al cambiar el valor <b>Más prob.</b> de una variable, el mínimo y el máximo se calculan automáticamente (−10 % / +10 %; en años, al entero más próximo). Puede modificarlos después.</div>
         
         <fieldset>
           <legend>DATOS FIJOS</legend>
           <div class="grid-2" style="margin-bottom:10px;">
-            <div><label>Área Construcción Ac (m²)</label><input type="number" id="v_Ac" value="950"></div>
-            <div><label>Área Terreno At (m²)</label><input type="number" id="v_At" value="2750"></div>
+            <div><label>Área Construcción Ac (m²)</label><input type="text" inputmode="decimal" data-num id="v_Ac" value="950" autocomplete="off"></div>
+            <div><label>Área Terreno At (m²)</label><input type="text" inputmode="decimal" data-num id="v_At" value="2750" autocomplete="off"></div>
           </div>
           <div class="grid-2">
-            <div><label>Factor Rescate Fr (adim)</label><input type="number" id="v_Fr" value="0.90" step="0.01"></div>
+            <div><label>Factor Rescate Fr (adim)</label><input type="text" inputmode="decimal" data-num data-plain="1" id="v_Fr" value="0.90" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -217,9 +219,9 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_Cuc" value="75000"></div>
-            <div><label>Más prob.</label><input type="number" id="base_Cuc" value="85030.91"></div>
-            <div><label>Máximo</label><input type="number" id="max_Cuc" value="95000"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num id="min_Cuc" value="75000" autocomplete="off"></div>
+            <div><label>Más prob.</label><input type="text" inputmode="decimal" data-num id="base_Cuc" value="85030.91" autocomplete="off"></div>
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num id="max_Cuc" value="95000" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -235,9 +237,9 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_Fc" value="1.25" step="0.01"></div>
-            <div><label>Más prob.</label><input type="number" id="base_Fc" value="1.35" step="0.01"></div>
-            <div><label>Máximo</label><input type="number" id="max_Fc" value="1.45" step="0.01"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="min_Fc" value="1.25" autocomplete="off"></div>
+            <div><label>Más prob.</label><input type="text" inputmode="decimal" data-num data-plain="1" id="base_Fc" value="1.35" autocomplete="off"></div>
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="max_Fc" value="1.45" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -253,9 +255,9 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_Ct" value="0.2750" step="0.0001"></div>
-            <div><label>Más prob.</label><input type="number" id="base_Ct" value="0.2967" step="0.0001"></div>
-            <div><label>Máximo</label><input type="number" id="max_Ct" value="0.3250" step="0.0001"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="min_Ct" value="0.2750" autocomplete="off"></div>
+            <div><label>Más prob.</label><input type="text" inputmode="decimal" data-num data-plain="1" id="base_Ct" value="0.2967" autocomplete="off"></div>
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="max_Ct" value="0.3250" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -271,9 +273,9 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_ea" value="15"></div>
-            <div><label>Más prob.</label><input type="number" id="base_ea" value="16"></div>
-            <div><label>Máximo</label><input type="number" id="max_ea" value="17"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="min_ea" value="15" autocomplete="off"></div>
+            <div><label>Más prob.</label><input type="text" inputmode="decimal" data-num data-plain="1" id="base_ea" value="16" autocomplete="off"></div>
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="max_ea" value="17" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -289,9 +291,9 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_vu" value="40"></div>
-            <div><label>Más prob.</label><input type="number" id="base_vu" value="50"></div>
-            <div><label>Máximo</label><input type="number" id="max_vu" value="60"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="min_vu" value="40" autocomplete="off"></div>
+            <div><label>Más prob.</label><input type="text" inputmode="decimal" data-num data-plain="1" id="base_vu" value="50" autocomplete="off"></div>
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="max_vu" value="60" autocomplete="off"></div>
           </div>
         </fieldset>
 
@@ -307,16 +309,16 @@
             </select>
           </div>
           <div class="grid-3">
-            <div><label>Mínimo</label><input type="number" id="min_CH" value="0.02" step="0.01"></div>
-            <div><label>Base / Prob.</label><input type="number" id="base_CH" value="0.03" step="0.01"></div> 
-            <div><label>Máximo</label><input type="number" id="max_CH" value="0.10" step="0.01"></div>
+            <div><label>Mínimo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="min_CH" value="0.02" autocomplete="off"></div>
+            <div><label>Base / Prob.</label><input type="text" inputmode="decimal" data-num data-plain="1" id="base_CH" value="0.03" autocomplete="off"></div> 
+            <div><label>Máximo</label><input type="text" inputmode="decimal" data-num data-plain="1" id="max_CH" value="0.10" autocomplete="off"></div>
           </div>
           <div class="note">δ (depreciación) se calcula con el criterio Ross-Heidecke: δ = (1 − α)·CH + α, donde α = ½·(ea/vu + ea²/vu²).</div>
         </fieldset>
 
         <fieldset>
           <legend>Vme - VALOR DE MÁQUINAS Y EQUIPOS (UM)</legend>
-          <div><label>Valor Determinista (UM)</label><input type="number" id="base_Vme" value="0"></div>
+          <div><label>Valor Determinista (UM)</label><input type="text" inputmode="decimal" data-num id="base_Vme" value="0" autocomplete="off"></div>
           <div class="note">Nota: Por rigor metodológico, si este monto excede el 10% del costo nuevo de construcción (Vcn), el modelo lo limitará automáticamente a dicho tope para evitar distorsiones en el valor del inmueble.</div>
         </fieldset>
 
@@ -413,7 +415,7 @@
             <tr><td>Mediana</td><td id="s_mediana">0</td></tr>
             <tr><td>Desviación estándar</td><td id="s_std">0</td></tr>
             <tr><td>Varianza</td><td id="s_var">0</td></tr>
-            <tr><td>Sesgo</td><td id="s_sesgo">0</td></tr>
+            <tr><td>Asimetría</td><td id="s_sesgo">0</td></tr>
             <tr><td>Curtosis</td><td id="s_curtosis">0</td></tr>
             <tr><td>Coeficiente de variación</td><td id="s_cv">0%</td></tr>
             <tr><td>Mínimo</td><td id="s_min">0</td></tr>
@@ -433,7 +435,86 @@
     let tornadoVarChart = null;
     let tornado10Chart = null;
 
-    const fNum = (num, decimals = 2) => new Intl.NumberFormat('es-VE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
+    // --- ENTRADAS: puntos de miles, coma decimal y precisión completa (data-raw) ---
+    function parseNum(el){
+        const v=(el.value||'').trim().replace(/\s/g,'');
+        if(!v) return 0;
+        let t;
+        if(v.includes(',')) t=v.replace(/\./g,'').replace(',','.');
+        else if(el.dataset.plain==='1') t=v;
+        else t=/^\d{1,3}(\.\d{3})+$/.test(v)?v.replace(/\./g,''):v;
+        const x=parseFloat(t); return Number.isFinite(x)?x:0;
+    }
+    const fmtIn=x=>new Intl.NumberFormat('de-DE',{minimumFractionDigits:2,maximumFractionDigits:10}).format(x);
+    function readNum(id){const el=document.getElementById(id);const x=Number(el.dataset.raw);return Number.isFinite(x)?x:0;}
+    document.querySelectorAll('input[data-num]').forEach(el=>{
+        el.dataset.raw=String(parseNum(el));
+        el.value=fmtIn(Number(el.dataset.raw));
+        el.addEventListener('focus',()=>{el.value=String(el.dataset.raw).replace('.',',');el.select();});
+        el.addEventListener('input',()=>{el.dataset.raw=String(parseNum(el));});
+        el.addEventListener('blur',()=>{el.value=fmtIn(Number(el.dataset.raw));});
+    });
+
+    // --- VALORES VISIBLES EN LOS GRÁFICOS ---
+    const pluginValores={
+        id:'valores',
+        afterDatasetsDraw(chart,args,opts){
+            if(!opts||!opts.fmt) return;
+            const {ctx,chartArea}=chart, horiz=chart.options.indexAxis==='y';
+            ctx.save(); ctx.font="bold 11px 'JetBrains Mono',Consolas,monospace"; ctx.textBaseline='middle';
+            chart.data.datasets.forEach((ds,di)=>{
+                const meta=chart.getDatasetMeta(di); if(meta.hidden) return;
+                const step=(!horiz&&meta.data.length&&meta.data[0].width>0)?Math.max(1,Math.ceil(34/meta.data[0].width)):1;
+                meta.data.forEach((bar,i)=>{
+                    const raw=ds.data[i]; if(raw===null||raw===undefined) return;
+                    const put=(txt,x,y,al)=>{
+                        const w=ctx.measureText(txt).width;
+                        let ax=x, a=al, col='#222';
+                        if(a==='left'&&x+w>chart.width-2){a='right';ax=x-8;col='#fff';}
+                        if(a==='right'&&ax-w<2){a='left';ax=x+8;col='#fff';}
+                        ctx.fillStyle=col; ctx.textAlign=a; ctx.fillText(txt,ax,y);
+                    };
+                    if(horiz){
+                        if(Array.isArray(raw)){
+                            const lo=Math.min(bar.x,bar.base), hi=Math.max(bar.x,bar.base);
+                            put(opts.fmt(raw[0],i,di),lo-4,bar.y,'right');
+                            put(opts.fmt(raw[1],i,di),hi+4,bar.y,'left');
+                        }else{
+                            put(opts.fmt(raw,i,di),raw>=0?bar.x+4:bar.x-4,bar.y,raw>=0?'left':'right');
+                        }
+                    }else if(raw>0 && i%step===0){
+                        ctx.fillStyle='#222'; ctx.textAlign='center'; ctx.textBaseline='bottom';
+                        ctx.fillText(opts.fmt(raw,i,di),bar.x,bar.y-3); ctx.textBaseline='middle';
+                    }
+                });
+            });
+            ctx.restore();
+        }
+    };
+    Chart.register(pluginValores);
+
+    // --- RANGO POR DEFECTO: ±10 % al cambiar el valor "Más prob." (el usuario puede modificarlo después) ---
+    const AUTO_ENTEROS = ['ea', 'vu'];                 // años: entero más próximo (13,5 → 14; 16,5 → 17; 14,4 → 14)
+    const AUTO_DEC = { Cuc: 2, Fc: 4, Ct: 4, CH: 4 };  // resto de variables: decimales conservados
+    function setNum(id, x) { const el = document.getElementById(id); el.dataset.raw = String(x); el.value = fmtIn(x); }
+    function autoRango(id) {
+        const b = readNum('base_' + id);
+        const f = Math.pow(10, AUTO_DEC[id] || 0);
+        const r = x => AUTO_ENTEROS.includes(id) ? Math.round(x + 1e-9) : Math.round(x * f + 1e-9) / f;
+        const lo = r(b * 0.9), hi = r(b * 1.1);
+        setNum('min_' + id, Math.min(lo, hi));
+        setNum('max_' + id, Math.max(lo, hi));
+    }
+    ['Cuc', 'Fc', 'Ct', 'ea', 'vu', 'CH'].forEach(id => {
+        document.getElementById('base_' + id).addEventListener('change', () => autoRango(id));
+    });
+
+    const fNum = (num, decimals = 2) => new Intl.NumberFormat('de-DE', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }).format(num);
+
+    // Clasificación (curtosis en exceso, normal = 0). Tolerancia ±0,10 para considerar la forma normal/simétrica.
+    const TOL_FORMA = 0.10;
+    const tipoAsimetria = a => Math.abs(a) < TOL_FORMA ? 'Simetría' : (a < 0 ? 'Asimetría negativa' : 'Asimetría positiva');
+    const tipoCurtosis  = k => Math.abs(k) < TOL_FORMA ? 'Mesocúrtica' : (k < 0 ? 'Platicúrtica' : 'Leptocúrtica');
 
     const VARS = ['Cuc', 'Fc', 'Ct', 'ea', 'vu', 'CH'];
     const ETIQUETAS = {
@@ -496,9 +577,9 @@
     const getV = (id) => {
         return {
             dist: document.getElementById('dist_'+id).value,
-            min: parseFloat(document.getElementById('min_'+id).value),
-            base: parseFloat(document.getElementById('base_'+id).value),
-            max: parseFloat(document.getElementById('max_'+id).value)
+            min: readNum('min_'+id),
+            base: readNum('base_'+id),
+            max: readNum('max_'+id)
         };
     };
 
@@ -582,10 +663,10 @@
             const iteraciones = parseInt(document.getElementById('n_pruebas').value);
             const confNivel = parseFloat(document.getElementById('n_confianza').value);
             
-            const Ac = parseFloat(document.getElementById('v_Ac').value);
-            const At = parseFloat(document.getElementById('v_At').value);
-            const Fr = parseFloat(document.getElementById('v_Fr').value);
-            const VmeBase = parseFloat(document.getElementById('base_Vme').value);
+            const Ac = readNum('v_Ac');
+            const At = readNum('v_At');
+            const Fr = readNum('v_Fr');
+            const VmeBase = readNum('base_Vme');
 
             const params = {};
             VARS.forEach(k => params[k] = getV(k));
@@ -695,8 +776,8 @@
             document.getElementById('s_mediana').innerText = fNum(mediana);
             document.getElementById('s_std').innerText = fNum(std);
             document.getElementById('s_var').innerText = fNum(varianza);
-            document.getElementById('s_sesgo').innerText = fNum(sesgo, 4);
-            document.getElementById('s_curtosis').innerText = fNum(curtosis, 2);
+            document.getElementById('s_sesgo').innerText = fNum(sesgo, 4) + ' — ' + tipoAsimetria(sesgo);
+            document.getElementById('s_curtosis').innerText = fNum(curtosis, 2) + ' — ' + tipoCurtosis(curtosis);
             document.getElementById('s_cv').innerText = fNum(cv, 2) + '%';
             document.getElementById('s_min').innerText = fNum(min);
             document.getElementById('s_max').innerText = fNum(max);
@@ -818,6 +899,7 @@
                 responsive: true,
                 plugins: {
                     legend: {display: false},
+                    valores: { fmt: v => fNum(v, 0) },
                     title: { display: true, text: 'Distribución del Valor del Inmueble (UM)', align: 'start', font: {family: "'Segoe UI', sans-serif", weight: 'normal'}, color: '#666' }
                 },
                 scales: {
@@ -829,6 +911,7 @@
     }
 
     const escalaPct = (titulo) => ({
+        grace: '15%',
         title: { display: true, text: titulo, font: {family: "'Segoe UI', sans-serif", size: 11} },
         ticks: { callback: function(v){ return v + '%'; }, font: {family: "monospace", size: 10} }
     });
@@ -853,6 +936,7 @@
                 responsive: true,
                 plugins: {
                     legend: { display: false },
+                    valores: { fmt: v => fNum(v, 2) + '%' },
                     tooltip: { callbacks: { label: function(c) {
                         const it = items[c.dataIndex];
                         return [
@@ -885,6 +969,7 @@
                 responsive: true,
                 plugins: {
                     legend: { display: false },
+                    valores: { fmt: v => fNum(v, 1) + '%' },
                     tooltip: { callbacks: { label: function(c) {
                         const it = items[c.dataIndex];
                         return ['Contribución: ' + fNum(it.pct, 1) + '%', 'Correlación de rangos: ' + fNum(it.r, 3)];
@@ -913,6 +998,7 @@
                 responsive: true,
                 plugins: {
                     legend: { display: true, position: 'bottom' },
+                    valores: { fmt: v => fNum(v, 2) + '%' },
                     tooltip: { callbacks: { label: function(c) { return c.dataset.label + ': ' + fNum(c.raw, 2) + '% en Vi'; } } }
                 },
                 scales: { x: escalaPct('Variación de Vi respecto al caso base (%)'), y: escalaEtiquetas }
