@@ -161,6 +161,17 @@
     .layout > .panel:last-child { border: none; box-shadow: none; }
     .chart-box { break-inside: avoid; }
   }
+
+  /* VISOR DEL CAPÍTULO (solo lectura) */
+  #cap7Modal { display:none; position:fixed; inset:0; z-index:9999; background:rgba(20,28,40,.92); flex-direction:column; }
+  #cap7Modal.open { display:flex; }
+  #cap7Bar { display:flex; align-items:center; gap:10px; padding:8px 14px; background:var(--dark-blue); color:#fff; font-family:var(--mono); font-size:.8rem; }
+  #cap7Bar .sp { flex:1; }
+  #cap7Bar button { background:#fff; color:var(--dark-blue); border:none; padding:5px 12px; font-family:var(--mono); font-weight:bold; cursor:pointer; }
+  #cap7Pages { flex:1; overflow:auto; padding:16px 0; text-align:center; -webkit-user-select:none; user-select:none; }
+  #cap7Pages canvas { display:block; margin:0 auto 14px auto; background:#fff; box-shadow:0 2px 10px rgba(0,0,0,.5); max-width:none; -webkit-user-drag:none; }
+  #cap7Msg { color:#fff; font-family:var(--sans); padding:30px; }
+  @media print { #cap7Modal { display:none !important; } }
 </style>
 </head>
 <body>
@@ -181,7 +192,7 @@
     <!-- IMAGEN DEL LIBRO (ESTÁTICA) -->
     <div class="header-book">
       <img src="Contributivo.png" alt="Portada Método Contributivo" class="book-cover">
-      <a class="book-tag" href="Capitulo_7.pdf" target="_blank" rel="noopener" title="Abrir el Capítulo 7" style="display:inline-block;text-decoration:none;color:inherit;cursor:pointer">CAP. 7 - SIMULACIÓN DE ESCENARIOS</a>
+      <a class="book-tag" href="#" id="abrirCap7" title="Leer el Capítulo 7" style="display:inline-block;text-decoration:none;color:inherit;cursor:pointer">CAP. 7 - SIMULACIÓN DE ESCENARIOS</a>
     </div>
 
     <div class="header-right">
@@ -1005,6 +1016,77 @@
             }
         });
     }
+</script>
+
+<div id="cap7Modal" role="dialog" aria-label="Capítulo 7">
+  <div id="cap7Bar">
+    <span>CAPÍTULO 7 · SIMULACIÓN DE ESCENARIOS</span><span class="sp"></span>
+    <span id="cap7Info"></span>
+    <button id="cap7Menos" title="Reducir">−</button><button id="cap7Mas" title="Ampliar">+</button>
+    <button id="cap7Cerrar">Cerrar ✕</button>
+  </div>
+  <div id="cap7Pages"><div id="cap7Msg">Cargando capítulo…</div></div>
+</div>
+<script>
+(function(){
+  const PDF_URL='Capitulo_7.pdf';
+  const PDFJS='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+  const WORKER='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  const modal=document.getElementById('cap7Modal'), box=document.getElementById('cap7Pages'), info=document.getElementById('cap7Info');
+  let pdf=null, zoom=1, token=0;
+
+  function loadLib(){
+    return new Promise((ok,fail)=>{
+      if(window.pdfjsLib) return ok();
+      const sc=document.createElement('script'); sc.src=PDFJS; sc.onload=ok; sc.onerror=()=>fail(new Error('pdfjs'));
+      document.head.appendChild(sc);
+    });
+  }
+  async function renderAll(){
+    if(!pdf) return;
+    const my=++token;
+    box.innerHTML='';
+    const w=Math.min(box.clientWidth-24, 1000)*zoom, dpr=window.devicePixelRatio||1;
+    for(let i=1;i<=pdf.numPages;i++){
+      if(my!==token) return;
+      const page=await pdf.getPage(i);
+      const base=page.getViewport({scale:1});
+      const vp=page.getViewport({scale:(w/base.width)*dpr});
+      const cv=document.createElement('canvas');
+      cv.width=vp.width; cv.height=vp.height; cv.style.width=(vp.width/dpr)+'px'; cv.style.height=(vp.height/dpr)+'px';
+      cv.draggable=false; box.appendChild(cv);
+      await page.render({canvasContext:cv.getContext('2d'),viewport:vp}).promise;
+      info.textContent=pdf.numPages+' páginas';
+    }
+  }
+  async function abrir(e){
+    e.preventDefault();
+    modal.classList.add('open'); document.body.style.overflow='hidden';
+    if(pdf){ return; }
+    box.innerHTML='<div id="cap7Msg">Cargando capítulo…</div>';
+    try{
+      await loadLib();
+      pdfjsLib.GlobalWorkerOptions.workerSrc=WORKER;
+      const r=await fetch(PDF_URL); if(!r.ok) throw new Error('HTTP '+r.status);
+      pdf=await pdfjsLib.getDocument({data:await r.arrayBuffer()}).promise;
+      renderAll();
+    }catch(err){
+      box.innerHTML='<div id="cap7Msg">No se pudo cargar el capítulo ('+err.message+'). Verifique que el archivo '+PDF_URL+' esté en el repositorio.</div>';
+    }
+  }
+  function cerrar(){ modal.classList.remove('open'); document.body.style.overflow=''; }
+  document.getElementById('abrirCap7').addEventListener('click',abrir);
+  document.getElementById('cap7Cerrar').addEventListener('click',cerrar);
+  document.getElementById('cap7Mas').addEventListener('click',()=>{zoom=Math.min(2.5,zoom+0.2);renderAll();});
+  document.getElementById('cap7Menos').addEventListener('click',()=>{zoom=Math.max(0.5,zoom-0.2);renderAll();});
+  // Disuasión: sin menú contextual, sin atajos de guardar/imprimir mientras el visor está abierto
+  modal.addEventListener('contextmenu',e=>e.preventDefault());
+  document.addEventListener('keydown',e=>{
+    if(!modal.classList.contains('open')) return;
+    if(e.key==='Escape') cerrar();
+    if((e.ctrlKey||e.metaKey)&&['s','p','u'].includes(e.key.toLowerCase())) e.preventDefault();
+  });
+})();
 </script>
 </body>
 </html>
